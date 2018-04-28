@@ -9,13 +9,10 @@ camFrame = 90;      %valid: 2 to 90
 lMotorPin = 'left motor';
 rMotorPin = 'right motor';
 
-referencePoint = 0.2;   %valid: 0 to 1
-predictionPoint = 0.6;  %valid: 0 to 1
-
 
 %% Initialize
 
-[rpi, cam] = InitializePi(loginDataFile, camWidth, camHeight, camFrame, lMotorPin, rMotorPin);
+%[rpi, cam] = InitializePi(loginDataFile, camWidth, camHeight, camFrame, lMotorPin, rMotorPin);
 
 f1 = figure(1); 
 stopCriteria = 0; %replace with eg. lost line || end of line || obstacle
@@ -25,7 +22,8 @@ stopCriteria = 0; %replace with eg. lost line || end of line || obstacle
 while not(stopCriteria)
     %% Process frame
     
-    rgb = snapshot(cam); %capture frame
+    %rgb = snapshot(cam); %capture frame
+    rgb = imread('training/line_zig.png');
     grayscale = rgb2gray(rgb);
     binary = ~imbinarize(grayscale);
     closed = imclose(binary, strel('square', 10));
@@ -36,25 +34,17 @@ while not(stopCriteria)
     
     %% Determine slope based on reference and prediction point
     
-    %get reference/prediction pixel height
-    referenceHeight = (1 - referencePoint) * camHeight;
-    predictionHeight = (1 - predictionPoint) * camHeight;
+    for i = 1 : 9
+        [x(i), y(i)] = GetLinePoint(frame, i/10);    %get 10 equally distributed points
+    end
     
-    %take out whole row at calculated height of frame
-    referenceRow = frame(referenceHeight, :); 
-    predictionRow = frame(predictionHeight, :);
+    x1 = linspace(0, camWidth, 1000);
+    p = polyfit(x, y, 1);
+    y1 = polyval(p, x1);
     
-    %get indexes of black (line) pixels
-    referenceRowLineIndexes = find(referenceRow == 1); 
-    predictionRowLineIndexes = find(predictionRow == 1);
-    
-    %get index of middle of line
-    referenceMiddleIndex = min(referenceRowLineIndexes) + (max(referenceRowLineIndexes) - min(referenceRowLineIndexes)) / 2;
-    predictionMiddleIndex = min(predictionRowLineIndexes) + (max(predictionRowLineIndexes) - min(predictionRowLineIndexes)) / 2;
-    
-    plot(referenceMiddleIndex, referenceHeight, 'rs', 'MarkerSize', 15);
-    plot(predictionMiddleIndex, predictionHeight, 'ro', 'MarkerSize', 15);
-    legend('reference point', 'prediction point');
+    plot(x, y, 'rx', 'MarkerSize', 15);
+    hold on;
+    plot(x1, y1, 'g');
     drawnow;
     
     
