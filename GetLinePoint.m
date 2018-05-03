@@ -6,8 +6,14 @@ function [x, y] = GetLinePoint(frame, height)
     row = frame(y, :); 
     
     %get indexes of black (line) pixels
-    rowLineIndexes = find(row == 1); 
+    rowLineIndexes = find(row == 1);
     
     %get index of middle of line
-    x = min(rowLineIndexes) + (max(rowLineIndexes) - min(rowLineIndexes)) / 2;
+    if (isempty(rowLineIndexes))
+        fprintf('%s: Line not found!\n', datestr(now,'HH:MM:SS.FFF'));
+        x = -1; y = -1;
+        return;
+    else
+        x = min(rowLineIndexes) + (max(rowLineIndexes) - min(rowLineIndexes)) / 2;
+    end
 end
