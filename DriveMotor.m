@@ -1,4 +1,4 @@
-function DriveMotor(rpi, motorPin, percentSpeed)
+voltagefunction DriveMotor(rpi, motorPin, percentSpeed)
 
     if ((percentSpeed < 0) || (percentSpeed > 1))
         fprintf(['Error! Attempted to drive ' motorPin ' with percentage value below 0/above 1!\n']);
@@ -6,12 +6,12 @@ function DriveMotor(rpi, motorPin, percentSpeed)
     end
 
     %calculate voltage [0 - 3,3V] based on percent speed;
-    %voltage =  percentSpeed * 3.3 * 0.01;
-    %writePWMVoltage(rpi, motorPin, voltage);
+    voltage =  percentSpeed *3.3;
+    writePWMVoltage(rpi, motorPin, voltage);
     
-    fprintf(['Driving ' motorPin ' with voltage ' num2str(voltage) '\n']);
+    fprintf(['Driving ' num2str(motorPin) ' with voltage ' num2str(voltage) '\n']);
     
-    writeDigitalPin(mypi, motorPin , percentSpeed > 0);
+    %writeDigitalPin(mypi, motorPin , percentSpeed > 0);
     
 end
 
