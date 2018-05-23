@@ -61,28 +61,29 @@ from picamera import PiCamera
 from picamera.array import PiRGBArray
 import math
 import time
-import numpy
+import numpy as np
 import cv2
+from scipy import ndimage
 
 L_MOTOR_PIN = 19
 R_MOTOR_PIN = 12
 
-CAMERA_WIDTH = 800
-CAMERA_HEIGHT = 600
 CAMERA_FRAME_RATE = 90
+CAMERA_RESOLUTION = (640, 480)
 
 KP = 15
 KD = 5
 
 
 def initialize_motors():
-    gpio.setmode(gpio.board)
-    gpio.setup(L_MOTOR_PIN, gpio.out)
-    gpio.setup(R_MOTOR_PIN, gpio.out)
+    gpio.setmode(gpio.BCM)
+    gpio.setup(L_MOTOR_PIN, gpio.OUT)
+    gpio.setup(R_MOTOR_PIN, gpio.OUT)
     l_motor = gpio.PWM(L_MOTOR_PIN, 50)
     r_motor = gpio.PWM(R_MOTOR_PIN, 50)
     l_motor.start(100)
     r_motor.start(100)
+    return l_motor, r_motor
 
 
 def drive_motor(motor, percent_speed):
@@ -90,15 +91,43 @@ def drive_motor(motor, percent_speed):
     motor.ChangeDutyCycle(duty_cycle)
 
 
+def get_line_center(bin):
+    row = ~(bin[CAMERA_RESOLUTION[1]/2, :])
+    return ndimage.measurements.center_of_mass(row)
+
+
+
+
+
 ##########################################
 
 camera = PiCamera()
+camera.resolution = CAMERA_RESOLUTION
+camera.framerate = CAMERA_FRAME_RATE
 raw_capture = PiRGBArray(camera)
-time_sleep(1)
+time.sleep(1)
+l_motor, r_motor = initialize_motors()
 
-for frame in camera.capture_continous(raw_capture, format="bgr", use_video_port=true):
-    img = frame.array
-    cv2.show('Raw image', img)
-    raw_capture.truncate(0)
+while True:
+    for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+        rgb = frame.array
+        raw_capture.truncate(0)
+        gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
+        bin = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)[1]
+        cv2.imshow('img', bin)
 
-camera.close()
+        center = get_line_center(bin)
+        error = center[0] - CAMERA_RESOLUTION[1]/2
+
+        error_percent = error/(CAMERA_RESOLUTION[0]/2)
+
+        if error < 0:
+            print("Turning left\n")
+            drive_motor(l_motor, 1 - error_percent)
+            drive_motor(r_motor, error_percent)
+        else:
+            print("Turning right\n")
+            drive_motor(l_motor, error_percent)
+            drive_motor(r_motor, 1 - error_percent)
+
+        cv2.waitKey(1)
