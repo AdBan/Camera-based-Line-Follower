@@ -1,61 +1,3 @@
-# import RPi.GPIO as gpio
-# import math
-# import cv2
-# import io
-# import numpy
-# import PiCamera as picamera
-#
-# #Function for initializing motor pins
-# def initializeMotors(lMotorPin,rMotorPin)
-# 	gpio.setmode(gpio.board)
-#
-# 	gpio.setup(lMotorPin, gpio.out)
-# 	gpio.setup(rMotorPin, gpio.out)
-#
-# 	lMotor = gpio.PWM(12 ,50)
-# 	rMotor = gpio.PWM(19, 50)
-#
-#
-# .start(100)
-# 	rMotor.start(100)
-# 	return (lMotor, rMotor)
-#
-# #Function for driving motors
-# def driveMotors (motor, percentSpeed)
-# 	dutyCycle = percentSpeed*100
-# 	motor.ChangeDutyCycle(dutyCycle)
-# 	return
-#
-# #Function for getting center of the line point
-# def getLinePoint(frame, height)
-# 	y = math.floor((1 - height) *
-#
-# #Initialize camera
-# cameraWidth = 800
-# cameraHeight = 600
-# cameraFrame = 90
-#
-# cam = PiCamera()
-# cam.resolution(cameraWidth,cameraHeight)
-# cam.framerate(cameraFrame)
-#
-# #Initialize motor pins and pid parameters
-# lMotorPin = 19
-# rMotorPin = 12
-#
-# lMotor, rMotor = initializeMotors(lMotorPin,rMotorPin)
-#
-# Kp = 15
-# Kd = 5
-#
-# #Initialize camera
-#
-# while (!stopCriteria)
-#
-
-##############################################
-
-
 import RPi.GPIO as gpio
 from picamera import PiCamera
 from picamera.array import PiRGBArray
@@ -87,13 +29,23 @@ def initialize_motors():
 
 
 def drive_motor(motor, percent_speed):
-    duty_cycle = percent_speed * 100
+    duty_cycle = percent_speed * 60
     motor.ChangeDutyCycle(duty_cycle)
 
 
 def get_line_center(bin):
-    row = ~(bin[CAMERA_RESOLUTION[1]/2, :])
-    return ndimage.measurements.center_of_mass(row)
+    # only one row
+    # row = ~(bin[CAMERA_RESOLUTION[1]/2, :])
+    # if sum(row) == 0:
+    #     return -1
+    # else:
+    #     return ndimage.measurements.center_of_mass(row)[0]
+
+    # whole image
+    if sum(sum(~bin)) == 0:
+        return -1
+    else:
+        return ndimage.measurements.center_of_mass(~bin)[1]
 
 
 
@@ -114,20 +66,26 @@ while True:
         raw_capture.truncate(0)
         gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
         bin = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)[1]
-        cv2.imshow('img', bin)
+        # cv2.imshow('img', bin)
+        cv2.waitKey(1)
 
         center = get_line_center(bin)
-        error = center[0] - CAMERA_RESOLUTION[1]/2
+        if center < 0:
+            drive_motor(l_motor, 100.0/60)
+            drive_motor(r_motor, 100.0/60)
+            continue
 
-        error_percent = error/(CAMERA_RESOLUTION[0]/2)
+        error = center - CAMERA_RESOLUTION[0]/2
+        error_percent = abs(error/(CAMERA_RESOLUTION[0]/2))
 
-        if error < 0:
-            print("Turning left\n")
+        print("center: " + str(center) + "\nerror: " + str(error) + "\nerror_percent: " + str(error_percent))
+
+        if error > 0:
+            print("Turning right\n")
             drive_motor(l_motor, 1 - error_percent)
             drive_motor(r_motor, error_percent)
         else:
-            print("Turning right\n")
+            print("Turning left\n")
             drive_motor(l_motor, error_percent)
             drive_motor(r_motor, 1 - error_percent)
 
-        cv2.waitKey(1)
